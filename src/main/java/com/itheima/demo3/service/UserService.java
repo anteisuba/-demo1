@@ -1,6 +1,5 @@
 package com.itheima.demo3.service;
 
-import com.itheima.demo3.dto.ForgotPasswordForm;
 import com.itheima.demo3.dto.RegistrationForm;
 import com.itheima.demo3.dto.ResetPasswordForm;
 import com.itheima.demo3.entity.User;
@@ -16,7 +15,7 @@ public interface UserService {
 
     Optional<User> findByResetToken(String token);
 
-    void initiatePasswordReset(ForgotPasswordForm form);
+    void sendPasswordResetLink(User user);
 
     void resetPassword(ResetPasswordForm form);
 

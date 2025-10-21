@@ -28,6 +28,15 @@ React UI (Vite)  <--REST-->  Spring Boot API  -->  Service  -->  Repository(JPA)
 - `reset_token` + `reset_token_expiry` 记录找回密码信息。
 - `created_at`、`updated_at` 在 `@PrePersist/@PreUpdate` 中自动维护。
 
+新增 `password_reset_otps` 表（对应 `PasswordResetOtp` 实体）：
+
+- `email`：申请重置的邮箱。
+- `code`：一次性验证码（默认 6 位数字）。
+- `expires_at`：过期时间（默认 5 分钟）。
+- `attempts`：错误尝试次数（超过上限自动失效）。
+- `verified`：校验是否完成，防止重复使用。
+- `created_at` / `updated_at`：方便审计和清理。
+
 ## 4. 后端关键组件
 
 ### Repository
@@ -37,17 +46,21 @@ React UI (Vite)  <--REST-->  Spring Boot API  -->  Service  -->  Repository(JPA)
 - `UserService` + `UserServiceImpl`：
   - `registerUser`：验证注册表单、加密密码。
   - `authenticate`：支持用户名或邮箱 + 密码校验。
-  - `initiatePasswordReset`：生成 30 分钟有效的 token。
+  - `sendPasswordResetLink`：写入 30 分钟有效的 token，并触发邮件发送。
   - `resetPassword`：校验 token、更新密码、清空 token。
+- `OtpService` + `OtpServiceImpl`：
+  - 生成/保存验证码（OTP），控制有效期与错误次数。
+  - 校验通过后调用 `UserService.sendPasswordResetLink` 下发正式重置邮件。
 - `EmailService` + `EmailServiceImpl`：
-  - 通过 `JavaMailSender` 发送密码重置邮件，读取 `app.mail.from`、`app.frontend-base-url` 构造链接。
+  - 发送 OTP 验证码邮件与密码重置链接邮件，支持开关调试模式。
 
 ### 控制器
 - `AuthController` (`/api/auth`):
   - `POST /register`：注册账号。
-  - `POST /login`：登录，返回用户信息（未实现 JWT，可在前端本地持久化）。
-  - `POST /forgot-password`：发送重置链接（演示环境日志输出）。
-  - `GET /reset-password/validate`：校验 token 是否有效。
+  - `POST /login`：登录，返回用户信息。
+  - `POST /forgot-password/request-otp`：给注册邮箱发送 6 位验证码。
+  - `POST /forgot-password/verify-otp`：校验验证码，成功后下发重置链接。
+  - `GET /reset-password/validate`：校验重置 token 是否有效。
   - `POST /reset-password`：提交 token + 新密码。
 - `UserController` (`/api/users/{identifier}`)：根据用户名或邮箱返回公开资料。
 - `GlobalExceptionHandler`：统一 JSON 返回格式，处理校验异常和业务异常。
@@ -74,7 +87,7 @@ React UI (Vite)  <--REST-->  Spring Boot API  -->  Service  -->  Repository(JPA)
 - 页面：
   - `LoginPage`：输入用户名/邮箱 + 密码，调用 `/auth/login`。
   - `RegisterPage`：注册账号，展示字段错误。
-  - `ForgotPasswordPage`：触发 `/auth/forgot-password`。
+  - `ForgotPasswordPage`：两步流程（请求验证码、验证验证码），分别调用 `/auth/forgot-password/request-otp` 与 `/verify-otp`。
   - `ResetPasswordPage`：读取 URL 中 token，调用校验与重置接口。
   - `DashboardPage`：展示登录后的用户信息，支持退出。
 - `ProtectedRoute`：路由级登录拦截。
@@ -86,11 +99,13 @@ React UI (Vite)  <--REST-->  Spring Boot API  -->  Service  -->  Repository(JPA)
    - React 调用 `POST /api/auth/register`，成功后提示用户登录。
 2. **登录**
    - React 调用 `POST /api/auth/login`，在上下文中缓存返回的用户信息。
-3. **找回密码**
-   - 前端提交邮箱到 `POST /api/auth/forgot-password`，后端生成 token（日志输出重置链接）。
-4. **验证重置链接**
-   - 前端在加载重置页时调用 `GET /api/auth/reset-password/validate?token=...`。
-5. **重置密码**
+3. **获取验证码（OTP）**
+   - 前端提交邮箱至 `POST /api/auth/forgot-password/request-otp`，后端生成 6 位验证码并发送邮件。
+4. **验证验证码并发送重置链接**
+   - 前端提交 `{ email, code }` 至 `POST /api/auth/forgot-password/verify-otp`，校验通过后下发带 token 的重置链接邮件。
+5. **验证重置链接**
+   - 用户点击邮件中的链接时，前端调用 `GET /api/auth/reset-password/validate?token=...`，确认有效性。
+6. **重置密码**
    - 前端提交 `{ token, password, confirmPassword }` 至 `POST /api/auth/reset-password`，后端完成校验与更新。
 
 ## 8. 环境配置与启动

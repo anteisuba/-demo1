@@ -5,4 +5,6 @@ import com.itheima.demo3.entity.User;
 public interface EmailService {
 
     void sendPasswordResetEmail(User user);
+
+    void sendOtpEmail(User user, String code);
 }

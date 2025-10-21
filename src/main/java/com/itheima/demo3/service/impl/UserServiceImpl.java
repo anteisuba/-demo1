@@ -1,6 +1,5 @@
 package com.itheima.demo3.service.impl;
 
-import com.itheima.demo3.dto.ForgotPasswordForm;
 import com.itheima.demo3.dto.RegistrationForm;
 import com.itheima.demo3.dto.ResetPasswordForm;
 import com.itheima.demo3.entity.User;
@@ -73,15 +72,11 @@ public class UserServiceImpl implements UserService {
 
     @Transactional
     @Override
-    public void initiatePasswordReset(ForgotPasswordForm form) {
-        User user = userRepository.findByEmail(form.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("该邮箱未注册账号"));
-
+    public void sendPasswordResetLink(User user) {
         String token = UUID.randomUUID().toString().replace("-", "");
         user.setResetToken(token);
         user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(30));
         userRepository.save(user);
-
         emailService.sendPasswordResetEmail(user);
     }
 

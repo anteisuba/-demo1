@@ -56,6 +56,28 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    @Override
+    public void sendOtpEmail(User user, String code) {
+        if (!mailEnabled) {
+            log.info("Mail sending disabled by configuration. OTP for {}: {}", user.getEmail(), code);
+            return;
+        }
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromAddress);
+        message.setTo(user.getEmail());
+        message.setSubject("密码重置验证码");
+        message.setText(buildOtpMessageBody(user.getUsername(), code));
+
+        try {
+            mailSender.send(message);
+            log.info("Password reset OTP sent to {}", user.getEmail());
+        } catch (MailException ex) {
+            log.error("Failed to send password reset otp to {}", user.getEmail(), ex);
+            throw new IllegalStateException("发送验证码失败，请稍后重试");
+        }
+    }
+
     private String buildMessageBody(String username, String resetLink) {
         StringBuilder builder = new StringBuilder();
         builder.append("您好 ").append(username).append("，").append(System.lineSeparator());
@@ -63,6 +85,15 @@ public class EmailServiceImpl implements EmailService {
         builder.append(resetLink).append(System.lineSeparator()).append(System.lineSeparator());
         builder.append("如果这不是您的操作，请忽略该邮件，原密码仍然有效。").append(System.lineSeparator());
         builder.append("此链接仅在 30 分钟内有效。");
+        return builder.toString();
+    }
+
+    private String buildOtpMessageBody(String username, String code) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("您好 ").append(username).append("，").append(System.lineSeparator());
+        builder.append("您的密码重置验证码为：").append(code).append(System.lineSeparator());
+        builder.append("验证码有效期为 5 分钟，请勿泄露给他人。").append(System.lineSeparator());
+        builder.append("如果这不是您的操作，请忽略该邮件。");
         return builder.toString();
     }
 }

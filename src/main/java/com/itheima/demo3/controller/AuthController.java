@@ -4,10 +4,12 @@ import com.itheima.demo3.dto.ApiMessage;
 import com.itheima.demo3.dto.ForgotPasswordForm;
 import com.itheima.demo3.dto.LoginRequest;
 import com.itheima.demo3.dto.LoginResponse;
+import com.itheima.demo3.dto.OtpVerificationRequest;
 import com.itheima.demo3.dto.RegistrationForm;
 import com.itheima.demo3.dto.ResetPasswordForm;
 import com.itheima.demo3.dto.UserResponse;
 import com.itheima.demo3.entity.User;
+import com.itheima.demo3.service.OtpService;
 import com.itheima.demo3.service.UserService;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
@@ -25,9 +27,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final UserService userService;
+    private final OtpService otpService;
 
-    public AuthController(UserService userService) {
+    public AuthController(UserService userService, OtpService otpService) {
         this.userService = userService;
+        this.otpService = otpService;
     }
 
     @PostMapping("/register")
@@ -44,10 +48,16 @@ public class AuthController {
         return ResponseEntity.ok(new LoginResponse("登录成功", UserResponse.from(user)));
     }
 
-    @PostMapping("/forgot-password")
-    public ResponseEntity<ApiMessage> forgotPassword(@Valid @RequestBody ForgotPasswordForm form) {
-        userService.initiatePasswordReset(form);
-        return ResponseEntity.ok(new ApiMessage("重置链接已发送，请检查邮箱"));
+    @PostMapping("/forgot-password/request-otp")
+    public ResponseEntity<ApiMessage> requestOtp(@Valid @RequestBody ForgotPasswordForm form) {
+        otpService.requestOtp(form.getEmail());
+        return ResponseEntity.ok(new ApiMessage("验证码已发送到邮箱"));
+    }
+
+    @PostMapping("/forgot-password/verify-otp")
+    public ResponseEntity<ApiMessage> verifyOtp(@Valid @RequestBody OtpVerificationRequest request) {
+        otpService.verifyOtp(request.getEmail(), request.getCode());
+        return ResponseEntity.ok(new ApiMessage("验证码验证成功，重置链接已发送到邮箱"));
     }
 
     @GetMapping("/reset-password/validate")

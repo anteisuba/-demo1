@@ -17,8 +17,11 @@ export const authApi = {
   login(payload) {
     return apiClient.post("/auth/login", payload);
   },
-  forgotPassword(payload) {
-    return apiClient.post("/auth/forgot-password", payload);
+  requestOtp(payload) {
+    return apiClient.post("/auth/forgot-password/request-otp", payload);
+  },
+  verifyOtp(payload) {
+    return apiClient.post("/auth/forgot-password/verify-otp", payload);
   },
   validateResetToken(token) {
     return apiClient.get("/auth/reset-password/validate", { params: { token } });
