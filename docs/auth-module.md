@@ -39,6 +39,8 @@ React UI (Vite)  <--REST-->  Spring Boot API  -->  Service  -->  Repository(JPA)
   - `authenticate`：支持用户名或邮箱 + 密码校验。
   - `initiatePasswordReset`：生成 30 分钟有效的 token。
   - `resetPassword`：校验 token、更新密码、清空 token。
+- `EmailService` + `EmailServiceImpl`：
+  - 通过 `JavaMailSender` 发送密码重置邮件，读取 `app.mail.from`、`app.frontend-base-url` 构造链接。
 
 ### 控制器
 - `AuthController` (`/api/auth`):
@@ -106,9 +108,17 @@ npm run dev
 
 在开发模式下，访问 `http://localhost:3000`，React 应用将通过 Axios 调用上述 REST API。
 
+### 邮件配置
+- 在 `src/main/resources/application.properties` 中设置 SMTP 参数：
+  - `spring.mail.host/port/username/password`：对应邮件服务提供商。
+  - `app.mail.from`：显示给用户的发件人邮箱。
+  - `app.frontend-base-url`：前端站点根地址，用于拼接重置链接。
+  - `app.mail.enabled`：布尔值，若为 `false` 则跳过发信仅记录日志，便于本地调试。
+- 若仅在本地调试，可使用 Mailtrap、阿里云邮件推送等服务的测试账号。
+
 ## 9. 后续扩展建议
 
 1. 引入 JWT 或 Session + Spring Security 配置，保护 `/api/users/**` 等受限资源。
-2. 将重置链接通过邮件发送，并将日志输出替换为实际通知服务。
+2. 将纯文本邮件升级为模板/多语言版本，并引入审计日志收集投递结果。
 3. 在前端加入表单验证库（例如 Zod/Formik），提升用户体验。
 4. 编写集成测试（Spring MockMvc、React Testing Library）保障主要流程。

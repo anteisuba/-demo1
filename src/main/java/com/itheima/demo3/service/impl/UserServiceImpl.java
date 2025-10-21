@@ -5,12 +5,11 @@ import com.itheima.demo3.dto.RegistrationForm;
 import com.itheima.demo3.dto.ResetPasswordForm;
 import com.itheima.demo3.entity.User;
 import com.itheima.demo3.repository.UserRepository;
+import com.itheima.demo3.service.EmailService;
 import com.itheima.demo3.service.UserService;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,14 +17,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UserServiceImpl implements UserService {
 
-    private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
-
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
-    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserServiceImpl(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            EmailService emailService
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -79,8 +82,7 @@ public class UserServiceImpl implements UserService {
         user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(30));
         userRepository.save(user);
 
-        // 实际项目中应该发送邮件或短信，这里先打印日志方便调试
-        log.info("Password reset link for {}: http://localhost:3000/reset-password?token={}", user.getEmail(), token);
+        emailService.sendPasswordResetEmail(user);
     }
 
     @Transactional
